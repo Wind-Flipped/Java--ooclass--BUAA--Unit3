@@ -108,7 +108,7 @@ public class MyNetwork implements Network {
         } else {
             ((MyPerson) getPerson(id1)).addAcquaintance(getPerson(id2), value);
             ((MyPerson) getPerson(id2)).addAcquaintance(getPerson(id1), value);
-            int[] index = getIndex(id1, id2);
+            int[] index = getIndex(id1, id2,peopleBlock);
             if (index[0] != index[1]) {
                 peopleBlock.get(index[0]).addAll(peopleBlock.get(index[1]));
                 blocks--;
@@ -132,7 +132,7 @@ public class MyNetwork implements Network {
         } else if (!contains(id2)) {
             throw new MyPersonIdNotFoundException(id2);
         } else {
-            int[] index = getIndex(id1, id2);
+            int[] index = getIndex(id1, id2,peopleBlock);
             return index[0] == index[1];
         }
     }
@@ -332,7 +332,7 @@ public class MyNetwork implements Network {
                 while (!edges.isEmpty()) {
                     Edge edge = edges.get(0);
                     edges.remove(0);
-                    int[] index = getIndex(edge.getDot1(), edge.getDot2());
+                    int[] index = getIndex(edge.getDot1(), edge.getDot2(),blockPeople);
                     if (index[0] == index[1]) {
                         continue;
                     } else {
@@ -351,19 +351,19 @@ public class MyNetwork implements Network {
     }
 
     //if it can go on, return true
-    public int[] getIndex(int id1, int id2) {
+    public int[] getIndex(int id1, int id2, ArrayList<ArrayList<Integer>> inBlock) {
         int i1 = 0;
         int i2 = 0;
         boolean flag1 = false;
         boolean flag2 = false;
         int[] index = new int[2];
-        int size = blockPeople.size();
+        int size = inBlock.size();
         for (int i = 0; i < size && (!flag1 || !flag2); i++) {
-            if (!flag1 && blockPeople.get(i).contains(id1)) {
+            if (!flag1 && inBlock.get(i).contains(id1)) {
                 i1 = i;
                 flag1 = true;
             }
-            if (!flag2 && blockPeople.get(i).contains(id2)) {
+            if (!flag2 && inBlock.get(i).contains(id2)) {
                 i2 = i;
                 flag2 = true;
             }
