@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.PriorityQueue;
 
 public class MyNetwork implements Network {
     private final ArrayList<Person> people;
@@ -108,7 +109,7 @@ public class MyNetwork implements Network {
         } else {
             ((MyPerson) getPerson(id1)).addAcquaintance(getPerson(id2), value);
             ((MyPerson) getPerson(id2)).addAcquaintance(getPerson(id1), value);
-            int[] index = getIndex(id1, id2,peopleBlock);
+            int[] index = getIndex(id1, id2, peopleBlock);
             if (index[0] != index[1]) {
                 peopleBlock.get(index[0]).addAll(peopleBlock.get(index[1]));
                 blocks--;
@@ -132,7 +133,7 @@ public class MyNetwork implements Network {
         } else if (!contains(id2)) {
             throw new MyPersonIdNotFoundException(id2);
         } else {
-            int[] index = getIndex(id1, id2,peopleBlock);
+            int[] index = getIndex(id1, id2, peopleBlock);
             return index[0] == index[1];
         }
     }
@@ -254,9 +255,10 @@ public class MyNetwork implements Network {
                 int i = ((RedEnvelopeMessage) getMessage(id)).getMoney()
                         / getMessage(id).getGroup().getSize();
                 getMessage(id).getPerson1().addMoney(
-                        -i * getMessage(id).getGroup().getSize());
+                        -i * (getMessage(id).getGroup().getSize() - 1));
                 for (Person person : people) {
-                    if (getMessage(id).getGroup().hasPerson(person)) {
+                    if (getMessage(id).getGroup().hasPerson(person) &&
+                            person != getMessage(id).getPerson1()) {
                         person.addMoney(i);
                     }
                 }
@@ -318,13 +320,11 @@ public class MyNetwork implements Network {
         blockPeople.clear();
         for (int i = 0; i < blocks; i++) {
             if (peopleBlock.get(i).contains(id)) {
-                //System.out.println(peopleBlock.get(i));
                 for (Integer integer : peopleBlock.get(i)) {
                     ArrayList<Integer> temp = new ArrayList<>();
                     temp.add(integer);
                     blockPeople.add(temp);
                 }
-
                 for (int j : peopleBlock.get(i)) {
                     addEdges(edges, j);
                 }
@@ -332,7 +332,7 @@ public class MyNetwork implements Network {
                 while (!edges.isEmpty()) {
                     Edge edge = edges.get(0);
                     edges.remove(0);
-                    int[] index = getIndex(edge.getDot1(), edge.getDot2(),blockPeople);
+                    int[] index = getIndex(edge.getDot1(), edge.getDot2(), blockPeople);
                     if (index[0] == index[1]) {
                         continue;
                     } else {
@@ -368,13 +368,8 @@ public class MyNetwork implements Network {
                 flag2 = true;
             }
         }
-        if (i1 <= i2) {
-            index[0] = i1;
-            index[1] = i2;
-        } else {
-            index[0] = i2;
-            index[1] = i1;
-        }
+        index[0] = Math.min(i1, i2);
+        index[1] = Math.max(i1, i2);
         return index;
     }
 
@@ -408,7 +403,15 @@ public class MyNetwork implements Network {
         while (entries.hasNext()) {
             Map.Entry<Integer, Integer> entry = entries.next();
             if (entry.getValue() < limit) {
-                messages.remove(getMessage(entry.getKey()));
+                Iterator<Message> messageIterator = messages.iterator();
+                while (messageIterator.hasNext()) {
+                    Message message = messageIterator.next();
+                    if (message instanceof EmojiMessage) {
+                        if (((EmojiMessage) message).getEmojiId() == entry.getKey()) {
+                            messageIterator.remove();
+                        }
+                    }
+                }
                 entries.remove();
             }
         }
@@ -419,7 +422,6 @@ public class MyNetwork implements Network {
         if (!contains(personId)) {
             throw new MyPersonIdNotFoundException(personId);
         }
-
         getPerson(personId).getMessages().removeIf(iter -> iter instanceof NoticeMessage);
     }
 
@@ -429,52 +431,59 @@ public class MyNetwork implements Network {
                 containsMessage(id) && getMessage(id).getType() == 1) {
             throw new MyMessageIdNotFoundException(id);
         }
-
         try {
             if (!isCircle(getMessage(id).getPerson1().getId(),
                     getMessage(id).getPerson2().getId())) {
                 return -1;
             }
         } catch (PersonIdNotFoundException e) {
-            e.printStackTrace();
+            e.print();
         }
         Message message = getMessage(id);
-        try {
-            sendMessage(id);
-        } catch (RelationNotFoundException | PersonIdNotFoundException e) {
-            e.printStackTrace();
+        message.getPerson1().addSocialValue(message.getSocialValue());
+        message.getPerson2().addSocialValue(message.getSocialValue());
+        if (message instanceof RedEnvelopeMessage) {
+            message.getPerson1().addMoney(
+                    -((RedEnvelopeMessage) message).getMoney());
+            message.getPerson2().addMoney(
+                    ((RedEnvelopeMessage) message).getMoney());
+        } else if (message instanceof EmojiMessage) {
+            emojiIdList.put(((EmojiMessage) message).getEmojiId(),
+                    emojiIdList.get(((EmojiMessage) message).getEmojiId()) + 1);
         }
+        ((MyPerson) message.getPerson2()).addMessageHead(message);
+        messages.remove(message);
         final int id1 = message.getPerson1().getId();
         final int id2 = message.getPerson2().getId();
-        ArrayList<Integer> node = new ArrayList<>();
-        HashMap<Integer, Integer> path = new HashMap<>();
-        ArrayList<Edge> edges = new ArrayList<>();
-        node.add(id1);
-        path.put(id1, 0);
-        addEdges(edges, id1);
-        while (!node.contains(id2)) {
-            Collections.sort(edges);
-            Iterator<Edge> iters = edges.iterator();
-            while (iters.hasNext()) {
-                Edge iter = iters.next();
-                int i1 = iter.getDot1();
-                int i2 = iter.getDot2();
-                if (!node.contains(i1) && node.contains(i2)) {
-                    node.add(i1);
-                    path.put(i1, path.get(i2) + iter.getValue());
-                    addEdges(edges, i1);
-                    break;
-                } else if ((node.contains(i1) && !node.contains(i2))) {
-                    node.add(i2);
-                    path.put(i2, path.get(i1) + iter.getValue());
-                    addEdges(edges, i2);
-                    break;
-                } else {
-                    iters.remove();
+        ArrayList<Person> flags = new ArrayList<>();
+        HashMap<Person, Integer> dist = new HashMap<>();
+        PriorityQueue<Node> nodePriorityQueue = new PriorityQueue<>();
+        Node o = new Node(id1, 0);
+        nodePriorityQueue.add(o);
+        while (!nodePriorityQueue.isEmpty()) {
+            Node node = nodePriorityQueue.poll();
+            if (flags.contains(getPerson(node.getId()))) {
+                continue;
+            }
+            if (node.getId() == id2) {
+                return node.getDistance();
+            }
+            flags.add(getPerson(node.getId()));
+            for (Map.Entry<Person, Integer> map :
+                    ((MyPerson) getPerson(node.getId())).getAcquaintances().entrySet()) {
+                if (flags.contains(map.getKey())) {
+                    continue;
+                }
+                if (!dist.containsKey(map.getKey()) ||
+                        node.getDistance() + map.getValue() < dist.get(map.getKey())) {
+                    Node node1 = new Node(map.getKey().getId(),
+                            node.getDistance() + map.getValue());
+                    dist.put(map.getKey(), node.getDistance() + map.getValue());
+                    nodePriorityQueue.add(node1);
                 }
             }
         }
-        return path.get(id2);
+        return -1;
     }
 
     public void addEdges(ArrayList<Edge> edges, int personId) {
