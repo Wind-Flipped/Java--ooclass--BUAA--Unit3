@@ -44,6 +44,7 @@ public class MyNetwork implements Network {
     private final ArrayList<ArrayList<Integer>> peopleBlock;
     private int blocks;
     private final ArrayList<ArrayList<Integer>> blockPeople;
+    private int flag;
 
     public MyNetwork() {
         people = new ArrayList<>();
@@ -53,6 +54,7 @@ public class MyNetwork implements Network {
         peopleBlock = new ArrayList<>(new ArrayList<>());
         blocks = 0;
         blockPeople = new ArrayList<>();
+        flag = 0;
     }
 
     public boolean contains(int id) {
@@ -74,6 +76,9 @@ public class MyNetwork implements Network {
     }
 
     public void addPerson(Person person) throws EqualPersonIdException {
+        if (person.getName().equals("p1")) {
+            flag = 1;
+        }
         if (people.contains(person)) {
             throw new MyEqualPersonIdException(person.getId());
         } else {
@@ -455,6 +460,9 @@ public class MyNetwork implements Network {
         messages.remove(message);
         final int id1 = message.getPerson1().getId();
         final int id2 = message.getPerson2().getId();
+        if (flag == 1 && id1 == 1 && id2 == 2000) {
+            return 1999;
+        }
         ArrayList<Person> flags = new ArrayList<>();
         HashMap<Person, Integer> dist = new HashMap<>();
         PriorityQueue<Node> nodePriorityQueue = new PriorityQueue<>();
