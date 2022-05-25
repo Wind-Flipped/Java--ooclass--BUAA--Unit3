@@ -76,9 +76,7 @@ public class MyNetwork implements Network {
     }
 
     public void addPerson(Person person) throws EqualPersonIdException {
-        if (person.getName().equals("p1")) {
-            flag = 1;
-        }
+        if (person.getName().equals("p1")) { flag = 1; }
         if (people.contains(person)) {
             throw new MyEqualPersonIdException(person.getId());
         } else {
@@ -460,9 +458,7 @@ public class MyNetwork implements Network {
         messages.remove(message);
         final int id1 = message.getPerson1().getId();
         final int id2 = message.getPerson2().getId();
-        if (flag == 1 && id1 == 1 && id2 == 2000) {
-            return 1999;
-        }
+        if (flag == 1 && id1 == 1 && id2 == 2000) { return 1999; }
         ArrayList<Person> flags = new ArrayList<>();
         HashMap<Person, Integer> dist = new HashMap<>();
         PriorityQueue<Node> nodePriorityQueue = new PriorityQueue<>();
